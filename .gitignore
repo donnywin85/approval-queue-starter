@@ -1,0 +1,11 @@
+# runtime state — the queue's own working directories
+queue/
+pending-approval/
+results/
+journal.jsonl
+
+# never
+.env
+.env.*
+*.log
+node_modules/
