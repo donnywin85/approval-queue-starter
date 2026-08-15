@@ -77,7 +77,7 @@ Refresh the page → the job is **held** with an Approve button. Tap it. Output 
 |---|---|---|
 | `id` | yes | unique, `[A-Za-z0-9_-]`, max 80 chars |
 | `title` | no | what + why, shown on the approval card |
-| `cmd` | yes | shell command to run on approval |
+| `cmd` | yes | **a shell command line**, parsed by your system shell and run as you on approval — read the [Security model](#security-model--read-this-before-you-write-your-first-job) before writing one |
 | `workdir` | no | working directory (default: dispatcher's cwd) |
 | `timeoutMs` | no | kill budget, default 900000 (15 min), cap 2 h |
 | `mustExitZero` | no | default `true` |
@@ -85,10 +85,35 @@ Refresh the page → the job is **held** with an Approve button. Tap it. Output 
 
 Environment: `PORT` (default 4949), `APPROVAL_TOKEN` (see below), `QUEUE_ROOT` (default: cwd).
 
-## Security model — read before tunneling
+## Security model — read this before you write your first job
 
-- **Jobs are arbitrary shell commands.** Anyone who can write to `queue/` can run code as you the moment
-  you tap Approve. The queue directory IS the security boundary.
+**A job's `cmd` is executed through a shell, with your privileges.** The dispatcher runs
+`spawn(job.cmd, { shell: true })`, so your system shell — `/bin/sh -c` on Unix, `cmd.exe /c` on
+Windows — parses the string, with everything that implies: pipes, redirects, `&&`, `;`, `` ` ``,
+`$(...)`, globbing, variable expansion. The job runs **as the user running the dispatcher**, with
+that user's files, SSH keys and cloud logins, and it **inherits the dispatcher's entire
+environment** (`env: process.env`), so every secret exported in that shell is readable by the job.
+There is no sandbox, no allowlist, and no argument-vector form. That is deliberate — running the
+command you approved is the whole product — but it has three consequences you have to design for:
+
+- **Treat the queue directory as code, not as data.** A file in `queue/` is a program that will run
+  as you the moment you tap Approve. Anyone, or anything, that can write a file there can execute
+  code as you. **Write-protect it**: keep it on a local disk, restrict it to your own account
+  (`chmod 700 queue`, or remove inherited ACLs on Windows), and never point `QUEUE_ROOT` at a synced
+  folder, a network share, a world-writable temp dir, or any path a web service can write to. The
+  queue directory IS the security boundary — the approval tap only decides *when* it fires.
+- **Never generate `cmd` from untrusted content.** If an agent composes a job from a web page, an
+  email, an issue body, a filename, a model's own output, or anything else you did not write, that
+  content is one `;` or `$(...)` away from *being* the command. Escaping is not a fix; there is no
+  safe quoting. Build the command only from values you control, and when a job must act on external
+  data, hand that data to **a script you wrote** via a file or stdin instead of splicing it into the
+  command line.
+- **Read the approval card as a command line, not as a task name.** Tapping Approve approves
+  arbitrary shell, not a reviewed argument list. The card shows `cmd` verbatim for exactly that
+  reason — read all of it, including whatever follows the first `&&`.
+
+Then, for exposure:
+
 - The web UI binds `127.0.0.1` only. To approve from your phone, put it behind **your own authenticated
   tunnel** (Cloudflare Tunnel + Access, Tailscale Serve, etc). Never expose the raw port.
 - Set `APPROVAL_TOKEN=something-long` and the Approve/Reject links require it. Do this before any tunnel.
