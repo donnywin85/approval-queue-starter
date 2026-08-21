@@ -49,7 +49,11 @@ EOF
 
 Refresh the page → the job is **held** with an Approve button. Tap it. Output lands in
 `results/hello.log`, the job file archives to `queue/done/`, and the lifecycle lands in
-`journal.jsonl`:
+`journal.jsonl`.
+
+That whole sequence was last run end-to-end against this repo's published `dispatcher.js`
+on **2026-08-21** — curl, boot, hold, approve, run, archive, journal — and the four lines
+below are the real output of it, not an illustration:
 
 ```json
 {"ts":"...","event":"held","id":"hello","title":"prove the loop works","detail":"pending approval"}
@@ -136,5 +140,17 @@ publish about it is a real log with a real timestamp — including the quiet wee
 - **Newsletter** — the week's measurements, free, every Monday: **https://arbdatadesk.beehiiv.com**
 - **Live dashboard** — the public one this queue operates, updated hourly:
   **https://arb-dex-data-production.up.railway.app/dashboard**
+
+### The services this queue actually operates
+
+Not a portfolio — these are the things on the other end of the Approve button, and
+each is a one-line install:
+
+| | what it is | install |
+|---|---|---|
+| [`dex-data-mcp`](https://github.com/donnywin85/dex-data-mcp) | 22 MCP tools — DEX data, geocoding, weather, search — keyless | `claude mcp add dex-data -- npx -y dex-data-mcp` |
+| [`arb-dex-mcp`](https://github.com/donnywin85/arb-dex-mcp) | cross-DEX spread on 6 chains, keyless | `claude mcp add arb-dex -- npx -y arb-dex-mcp` |
+| [`bsc-dex-spread-mcp`](https://github.com/donnywin85/bsc-dex-spread-mcp) | BSC spread, $0.01 USDC per call | `npx -y bsc-dex-spread-mcp` |
+| [`agent-utils-mcp`](https://github.com/donnywin85/agent-utils-mcp) | 8 paid agent utilities via x402 | `npx -y github:donnywin85/agent-utils-mcp` |
 
 MIT licensed — see [LICENSE](LICENSE).
